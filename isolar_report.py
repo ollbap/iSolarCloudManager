@@ -41,6 +41,42 @@ HIST_POINTS = [
 REALTIME_GEN = ["power", "total_active_power_of_pv", "inverter_ac_power", "pv_active_power_ems"]
 REALTIME_LOAD = ["load_power", "total_load_active_power", "load_active_power_ems"]
 
+# getPowerStationPointMinuteDataList rejects long spans ("query time interval exceeds the maximum limit").
+# pysolarcloud defaults to 3h when end_time is omitted; we request one calendar day in chunks.
+HIST_QUERY_CHUNK_HOURS = 3
+
+
+async def _historical_series_for_calendar_day(
+    plants_api: Plants,
+    plant_id: str,
+    day_start: datetime,
+    hist_points: list[str],
+) -> list[dict]:
+    """Fetch minute/hour historical points for one local calendar day (merged chunks)."""
+    day_end = day_start + timedelta(days=1)
+    merged: list[dict] = []
+    t = day_start
+    while t < day_end:
+        chunk_end = min(t + timedelta(hours=HIST_QUERY_CHUNK_HOURS), day_end)
+        span_end = chunk_end - timedelta(seconds=1)
+        if span_end < t:
+            break
+        try:
+            hist = await plants_api.async_get_historical_data(
+                plant_id,
+                t,
+                span_end,
+                measure_points=hist_points,
+                interval=timedelta(hours=1),
+            )
+            series = hist.get(str(plant_id), [])
+            merged.extend(series)
+        except Exception:
+            # API limits, network, or pysolarcloud raising KeyError on error payloads without "error" key.
+            pass
+        t = chunk_end
+    return merged
+
 
 def _server() -> Server:
     name = getattr(config, "ISOLAR_SERVER", "Europe")
@@ -283,28 +319,19 @@ async def run_report() -> None:
         ] = []
 
         for start in day_starts:
-            end = start + timedelta(days=1) - timedelta(seconds=1)
             label = start.strftime("%Y-%m-%d")
             prod = load = feed = buy = None
-            try:
-                hist = await plants_api.async_get_historical_data(
-                    plant_id,
-                    start,
-                    end,
-                    measure_points=HIST_POINTS,
-                    interval=timedelta(hours=1),
-                )
-                series = hist.get(str(plant_id), [])
-                mx = _max_per_code(series, hist_codes)
-                prod, _ = _pick_first_wh(
-                    mx,
-                    ["daily_yield", "daily_pv_yield_ems", "inverter_daily_yield"],
-                )
-                load, _ = _pick_first_wh(mx, ["daily_load_consumption"])
-                feed, _ = _pick_first_wh(mx, ["daily_feed_in_energy_pv", "feed_in_energy_today"])
-                buy, _ = _pick_first_wh(mx, ["energy_purchased_today"])
-            except PySolarCloudException:
-                pass
+            series = await _historical_series_for_calendar_day(
+                plants_api, plant_id, start, HIST_POINTS
+            )
+            mx = _max_per_code(series, hist_codes)
+            prod, _ = _pick_first_wh(
+                mx,
+                ["daily_yield", "daily_pv_yield_ems", "inverter_daily_yield"],
+            )
+            load, _ = _pick_first_wh(mx, ["daily_load_consumption"])
+            feed, _ = _pick_first_wh(mx, ["daily_feed_in_energy_pv", "feed_in_energy_today"])
+            buy, _ = _pick_first_wh(mx, ["energy_purchased_today"])
 
             buy_kwh = buy / 1000.0 if buy is not None else None
             feed_kwh = feed / 1000.0 if feed is not None else None
@@ -347,6 +374,10 @@ def main() -> None:
         asyncio.run(run_report())
     except PySolarCloudException as e:
         print(f"API error: {e}", file=sys.stderr)
+        raise SystemExit(2) from e
+    except KeyError as e:
+        # pysolarcloud can raise KeyError when building PySolarCloudException from some API bodies.
+        print(f"API error (unexpected response): {e!r}", file=sys.stderr)
         raise SystemExit(2) from e
 
 
