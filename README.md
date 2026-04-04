@@ -21,6 +21,7 @@ Designed to run on **Termux (Android)** or desktop, in the same spirit as a simp
 **What is safe in git**
 
 - **`config.example.py`** only contains **placeholders** (e.g. `YOUR_APP_KEY`). It shows the **shape** of the configuration, not real secrets.
+- **`get_access_token.py`** is only the OAuth helper; it does **not** embed credentials (it reads them from your local `config.py`).
 - **`README.md`** only **describes** where secrets go; it does not contain real keys or tokens.
 
 **After token refresh**
@@ -58,13 +59,46 @@ If `zoneinfo` fails with an unknown timezone on Termux, install tz data: `pkg in
 
 ---
 
+## Get ACCESS_TOKEN (OAuth helper)
+
+The script **`get_access_token.py`** is **tracked in git** and contains **no secrets**. It reads **`config.py`** (which you must not commit) and walks you through obtaining tokens once.
+
+**Before you run it**
+
+1. Copy `config.example.py` → `config.py` if you have not already.
+2. In `config.py`, set real values for **`ISOLAR_SERVER`**, **`APP_KEY`**, **`SECRET_KEY`**, **`APP_ID`**, and **`REDIRECT_URI`**.  
+   `REDIRECT_URI` must match the redirect URL registered in the [developer portal](https://developer-api.isolarcloud.com/).  
+   You can leave **`ACCESS_TOKEN` / `REFRESH_TOKEN` / `TOKEN_EXPIRES_AT`** as placeholders until the script prints new lines to paste in.
+
+**Run (desktop, after `./setup.sh`)**
+
+```bash
+./run_get_token.sh
+```
+
+Equivalent to activating the venv and running `python3 get_access_token.py`. Pass flags through, e.g. `./run_get_token.sh --url-only`.
+
+**Termux / phone**
+
+```bash
+./run_get_token_termux.sh
+```
+
+Use `./run_get_token_termux.sh --url-only` to print only the authorization URL.
+
+**Without the shell wrappers** (same behavior): `source venv/bin/activate` then `python3 get_access_token.py`, or on Termux `python3 get_access_token.py` from the project directory after `pip install -r requirements.txt`.
+
+The script prints step-by-step what to do: open the authorization URL, sign in, approve access, then paste the **full redirect URL** or the **`code`** query value. If your redirect target is a site like Google that **hides** `?code=` in the address bar, the script explains using **Developer Tools → Network (Preserve log)** to copy the first URL that still contains `code=`. It prints **`ACCESS_TOKEN`**, **`REFRESH_TOKEN`**, and **`TOKEN_EXPIRES_AT`** assignments to copy into `config.py`.
+
+---
+
 ## Configuration summary
 
 | Item | Purpose |
 |------|--------|
 | `ISOLAR_SERVER` | Gateway region: `Europe`, `International`, `Australia`, or `China` |
 | `APP_KEY`, `SECRET_KEY`, `APP_ID` | From the [iSolarCloud developer portal](https://developer-api.isolarcloud.com/) |
-| `ACCESS_TOKEN`, `REFRESH_TOKEN`, `TOKEN_EXPIRES_AT` | After OAuth (see comments in `config.example.py`) |
+| `ACCESS_TOKEN`, `REFRESH_TOKEN`, `TOKEN_EXPIRES_AT` | After OAuth: `./run_get_token.sh` / `./run_get_token_termux.sh`, or `get_access_token.py`; see `config.example.py` |
 | `PLANT_ID` | Your plant id; leave empty once to **list** plants and exit |
 | `TIMEZONE` | IANA name for day boundaries (e.g. `Europe/Madrid`) |
 | `PURCHASE_PRICE_PER_KWH`, `FEED_IN_PRICE_PER_KWH`, `CURRENCY_SYMBOL` | Money columns for purchased kWh and feed-in kWh |

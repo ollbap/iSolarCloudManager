@@ -4,6 +4,13 @@
 # -----------------------------------------------------------------------------
 # OAuth (one-time) — get ACCESS_TOKEN and REFRESH_TOKEN
 # -----------------------------------------------------------------------------
+# Easiest: from the project directory run (after pip install / venv):
+#   ./run_get_token.sh        (desktop, after ./setup.sh)
+#   ./run_get_token_termux.sh (Termux)
+#   or: python3 get_access_token.py
+# It prints step-by-step instructions and the lines to paste below.
+#
+# Manual outline:
 # 1. Register your app at https://developer-api.isolarcloud.com and note:
 #    APP_KEY, SECRET_KEY (portal may call it "Secret Key"), APP_ID (from Authorize URL).
 # 2. Set ISOLAR_SERVER to your region (must match the gateway you use):
