@@ -52,8 +52,8 @@ TIMEZONE = "Europe/Madrid"
 # -----------------------------------------------------------------------------
 # Tariffs (money columns) — price per kWh in your currency
 # -----------------------------------------------------------------------------
-PURCHASE_PRICE_PER_KWH = 0.0
-FEED_IN_PRICE_PER_KWH = 0.0
+PURCHASE_PRICE_PER_KWH = 0.14
+FEED_IN_PRICE_PER_KWH = 0.08
 CURRENCY_SYMBOL = "EUR"
 
 # -----------------------------------------------------------------------------

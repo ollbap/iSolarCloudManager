@@ -112,10 +112,20 @@ def _fmt_kw_w(w: float | None) -> str:
     return f"{w / 1000.0:.2f}"
 
 
-def _fmt_money(amount: float | None, symbol: str) -> str:
+def _fmt_plain_amount(amount: float | None) -> str:
     if amount is None:
         return "--"
-    return f"{symbol}{amount:.2f}"
+    return f"{amount:.2f}"
+
+
+def _sum_optional(vals: list[float | None]) -> float | None:
+    s = 0.0
+    n = 0
+    for v in vals:
+        if v is not None:
+            s += v
+            n += 1
+    return s if n else None
 
 
 def _use_color() -> bool:
@@ -339,15 +349,21 @@ async def run_report() -> None:
             income = feed_kwh * feed_in_rate if feed_kwh is not None else None
             rows_out.append((label, prod, load, feed, buy, cost, income))
 
-        print(f"{bold}Last 7 days{reset} (daily energy in kWh; money uses config tariffs)")
+        print(f"{bold}Last 7 days{reset} — energy and money from config tariffs")
         col_date = "Date"
         col_pv = "PV kWh"
         col_ld = "Load"
-        col_fi = "FeedIn"
-        col_buy = "Buy"
-        col_cost = "Cost"
-        col_inc = "Income"
-        w_date, w_pv, w_ld, w_fi, w_buy, w_cost, w_inc = 10, 8, 8, 8, 8, 10, 10
+        col_fi = "FeedIn kWh"
+        col_buy = "Buy kWh"
+        col_cost = f"Cost ({currency})"
+        col_inc = f"Income ({currency})"
+        w_date = 10
+        w_pv = max(len(col_pv), 8)
+        w_ld = 8
+        w_fi = max(len(col_fi), 8)
+        w_buy = max(len(col_buy), 8)
+        w_cost = max(len(col_cost), 8)
+        w_inc = max(len(col_inc), 8)
         sep = " | "
         header = (
             f"{col_date:<{w_date}}{sep}{col_pv:>{w_pv}}{sep}{col_ld:>{w_ld}}"
@@ -360,10 +376,25 @@ async def run_report() -> None:
             line = (
                 f"{label:<{w_date}}{sep}{_fmt_kwh_wh(prod):>{w_pv}}{sep}"
                 f"{_fmt_kwh_wh(load):>{w_ld}}{sep}{_fmt_kwh_wh(feed):>{w_fi}}{sep}"
-                f"{_fmt_kwh_wh(buy):>{w_buy}}{sep}{_fmt_money(cost, currency):>{w_cost}}{sep}"
-                f"{_fmt_money(income, currency):>{w_inc}}"
+                f"{_fmt_kwh_wh(buy):>{w_buy}}{sep}{_fmt_plain_amount(cost):>{w_cost}}{sep}"
+                f"{_fmt_plain_amount(income):>{w_inc}}"
             )
             print(line)
+
+        tp = _sum_optional([r[1] for r in rows_out])
+        tl = _sum_optional([r[2] for r in rows_out])
+        tf = _sum_optional([r[3] for r in rows_out])
+        tb = _sum_optional([r[4] for r in rows_out])
+        tc = _sum_optional([r[5] for r in rows_out])
+        ti = _sum_optional([r[6] for r in rows_out])
+        total_label = "Total"
+        print("-" * len(header))
+        print(
+            f"{total_label:<{w_date}}{sep}{_fmt_kwh_wh(tp):>{w_pv}}{sep}"
+            f"{_fmt_kwh_wh(tl):>{w_ld}}{sep}{_fmt_kwh_wh(tf):>{w_fi}}{sep}"
+            f"{_fmt_kwh_wh(tb):>{w_buy}}{sep}{_fmt_plain_amount(tc):>{w_cost}}{sep}"
+            f"{_fmt_plain_amount(ti):>{w_inc}}"
+        )
         print()
 
         _persist_tokens_if_changed(tokens_before, _snapshot_tokens(auth))
