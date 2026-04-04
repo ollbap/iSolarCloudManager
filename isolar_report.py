@@ -6,6 +6,7 @@ Optimized for Termux / narrow terminals.
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import sys
 from datetime import datetime, timedelta
@@ -241,7 +242,7 @@ def _realtime_pick(
     return None, None
 
 
-async def run_report() -> None:
+async def run_report(*, now_only: bool = False) -> None:
     tz = _tz()
     server = _server()
     plant_id = (getattr(config, "PLANT_ID", None) or "").strip()
@@ -309,6 +310,10 @@ async def run_report() -> None:
             + (f"  ({load_key})" if load_key else "")
         )
         print()
+
+        if now_only:
+            _persist_tokens_if_changed(tokens_before, _snapshot_tokens(auth))
+            return
 
         # --- Last 7 local days ---
         day_starts: list[datetime] = []
@@ -403,8 +408,18 @@ async def run_report() -> None:
 
 
 def main() -> None:
+    p = argparse.ArgumentParser(
+        description="iSolarCloud plant report: current power and optional last-7-days table."
+    )
+    p.add_argument(
+        "--now-only",
+        "-n",
+        action="store_true",
+        help="Print only current generation and consumption (skip the 7-day table).",
+    )
+    args = p.parse_args()
     try:
-        asyncio.run(run_report())
+        asyncio.run(run_report(now_only=args.now_only))
     except PySolarCloudException as e:
         print(f"API error: {e}", file=sys.stderr)
         raise SystemExit(2) from e
