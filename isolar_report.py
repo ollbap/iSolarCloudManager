@@ -93,11 +93,13 @@ def _tz() -> ZoneInfo:
     tz_name = getattr(config, "TIMEZONE", "UTC")
     try:
         return ZoneInfo(tz_name)
-    except Exception as e:
+    except Exception:
         raise SystemExit(
-            f"Invalid TIMEZONE={tz_name!r}. Use an IANA name (e.g. Europe/Madrid). "
-            "On Termux you may need: pkg install tzdata"
-        ) from e
+            f"Could not load TIMEZONE={tz_name!r}. Use an IANA name (e.g. Europe/Madrid).\n"
+            "If the name is correct but you see this on Termux or minimal systems, install "
+            "IANA data for Python: python3 -m pip install tzdata\n"
+            "(tzdata is listed in requirements.txt; re-run setup or pip install -r requirements.txt)"
+        )
 
 
 def _fmt_kwh_wh(wh: float | None) -> str:

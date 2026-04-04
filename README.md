@@ -53,7 +53,7 @@ cp config.example.py config.py
 ./run_termux.sh
 ```
 
-If `zoneinfo` fails with an unknown timezone on Termux, install tz data: `pkg install tzdata`.
+Timezone names (e.g. `Europe/Madrid`) need IANA zone data. This project depends on the **`tzdata`** PyPI package so `zoneinfo` works on Termux and other minimal environments—run **`python3 -m pip install -r requirements.txt`** (or `./setup_termux.sh`). Optionally you can also run `pkg install tzdata` on Termux for system tools.
 
 **Dependencies**
 
