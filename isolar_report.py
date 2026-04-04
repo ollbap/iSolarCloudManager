@@ -15,6 +15,8 @@ from aiohttp import ClientSession
 from pysolarcloud import Auth, PySolarCloudException, Server
 from pysolarcloud.plants import Plants
 
+import token_store
+
 try:
     import config
 except ImportError as e:
@@ -123,16 +125,31 @@ async def _list_plants(auth: Auth) -> None:
     print()
 
 
-def _attach_auth_tokens(auth: Auth) -> None:
-    access = getattr(config, "ACCESS_TOKEN", None)
-    refresh = getattr(config, "REFRESH_TOKEN", None)
+def _tokens_from_config() -> dict[str, str | int] | None:
+    access = (getattr(config, "ACCESS_TOKEN", None) or "").strip()
+    refresh = (getattr(config, "REFRESH_TOKEN", None) or "").strip()
     expires = int(getattr(config, "TOKEN_EXPIRES_AT", 0) or 0)
-    if not access or not refresh:
-        raise SystemExit("ACCESS_TOKEN and REFRESH_TOKEN must be set in config.py")
-    auth.tokens = {
+    bad = ("", "YOUR_ACCESS_TOKEN", "YOUR_REFRESH_TOKEN")
+    if access in bad or refresh in bad:
+        return None
+    return {
         "access_token": access,
         "refresh_token": refresh,
         "expires_at": expires,
+    }
+
+
+def _attach_auth_tokens(auth: Auth) -> None:
+    merged = token_store.load_tokens() or _tokens_from_config()
+    if not merged:
+        raise SystemExit(
+            "No OAuth tokens found. Run ./run_get_token.sh (or get_access_token.py) once "
+            "to create tokens.json, or set ACCESS_TOKEN and REFRESH_TOKEN in config.py."
+        )
+    auth.tokens = {
+        "access_token": merged["access_token"],
+        "refresh_token": merged["refresh_token"],
+        "expires_at": int(merged["expires_at"]),
     }
 
 
@@ -142,20 +159,20 @@ def _snapshot_tokens(auth: Auth) -> dict | None:
     return dict(auth.tokens)
 
 
-def _print_token_refresh_notice(before: dict | None, after: dict | None) -> None:
+def _persist_tokens_if_changed(before: dict | None, after: dict | None) -> None:
     if not before or not after:
         return
     if before.get("refresh_token") == after.get("refresh_token") and before.get(
         "access_token"
     ) == after.get("access_token"):
         return
-    print()
-    print(
-        "Tokens were refreshed. Update config.py with the new values to avoid stale credentials:"
+    token_store.save_tokens(
+        str(after["access_token"]),
+        str(after["refresh_token"]),
+        int(after["expires_at"]),
     )
-    print(f"  ACCESS_TOKEN = {after.get('access_token', '')!r}")
-    print(f"  REFRESH_TOKEN = {after.get('refresh_token', '')!r}")
-    print(f"  TOKEN_EXPIRES_AT = {after.get('expires_at', 0)}")
+    print()
+    print("Saved OAuth tokens to tokens.json (gitignored).")
     print()
 
 
@@ -200,7 +217,7 @@ async def run_report() -> None:
 
         if not plant_id:
             await _list_plants(auth)
-            _print_token_refresh_notice(tokens_before, _snapshot_tokens(auth))
+            _persist_tokens_if_changed(tokens_before, _snapshot_tokens(auth))
             return
 
         header_name = display_name
@@ -322,7 +339,7 @@ async def run_report() -> None:
             print(line)
         print()
 
-        _print_token_refresh_notice(tokens_before, _snapshot_tokens(auth))
+        _persist_tokens_if_changed(tokens_before, _snapshot_tokens(auth))
 
 
 def main() -> None:

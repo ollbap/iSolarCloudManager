@@ -23,6 +23,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 from aiohttp import ClientSession
 from pysolarcloud import Auth, Server
 
+import token_store
+
 try:
     import config
 except ImportError as e:
@@ -170,14 +172,10 @@ async def _run(*, url_only: bool) -> None:
 
         access = ts["access_token"]
         refresh = ts.get("refresh_token", "")
+        token_store.save_tokens(access, refresh, expires_at)
         print()
-        print("Add or replace these lines in config.py (keep other settings as they are):")
-        print()
-        print(f'ACCESS_TOKEN = "{access}"')
-        print(f'REFRESH_TOKEN = "{refresh}"')
-        print(f"TOKEN_EXPIRES_AT = {expires_at}")
-        print()
-        print(f"# access token expires in ~{expires_in}s; TOKEN_EXPIRES_AT is Unix time with small margin.")
+        print("Tokens saved to tokens.json (gitignored). isolar_report.py will use this file first.")
+        print("You can leave ACCESS_TOKEN / REFRESH_TOKEN / TOKEN_EXPIRES_AT as placeholders in config.py.")
         print()
 
 

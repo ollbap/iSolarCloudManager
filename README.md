@@ -10,23 +10,26 @@ Designed to run on **Termux (Android)** or desktop, in the same spirit as a simp
 
 **Where secrets live**
 
-- All iSolarCloud **app credentials** (app key, secret key, application id), **OAuth tokens** (access token, refresh token, expiry), **plant id**, **timezone**, and **tariff** settings belong in a file named **`config.py`** in the project root (next to `isolar_report.py`).
-- You create it once by copying the template: **`config.example.py` → `config.py`**, then edit `config.py` with your real values.
+- **`config.py`** (project root): iSolarCloud **app key**, **secret key**, **application id**, **redirect URI**, plus **plant id**, **timezone**, and **tariffs**. You create it by copying **`config.example.py` → `config.py`**.
+- **`tokens.json`** (project root, **gitignored**): **OAuth access token**, **refresh token**, and **`expires_at`** (Unix time). Written by **`get_access_token.py`** after login and **updated automatically** by **`isolar_report.py`** when the API refreshes tokens.
+
+**Token precedence**
+
+- If **`tokens.json`** exists and is valid, **`isolar_report.py`** uses it for OAuth. Otherwise it falls back to **`ACCESS_TOKEN`**, **`REFRESH_TOKEN`**, and **`TOKEN_EXPIRES_AT`** in **`config.py`** (for older setups).
 
 **What must never be committed**
 
-- **`config.py` is listed in `.gitignore`**. It is **not** part of the repository when you use this layout correctly.
-- Do **not** commit `config.py`, paste tokens into issues or chats, or share that file.
+- **`config.py`** and **`tokens.json`** are listed in **`.gitignore`**. Do **not** commit them, paste them into issues, or share them.
 
 **What is safe in git**
 
-- **`config.example.py`** only contains **placeholders** (e.g. `YOUR_APP_KEY`). It shows the **shape** of the configuration, not real secrets.
-- **`get_access_token.py`** is only the OAuth helper; it does **not** embed credentials (it reads them from your local `config.py`).
-- **`README.md`** only **describes** where secrets go; it does not contain real keys or tokens.
+- **`config.example.py`** only contains **placeholders**. **`token_store.py`** only reads/writes the file path; it does not contain secrets.
+- **`get_access_token.py`** does **not** embed credentials (it reads app settings from your local **`config.py`**).
+- **`README.md`** only **describes** where secrets go.
 
 **After token refresh**
 
-- The iSolarCloud API may return new access (and sometimes refresh) tokens when the access token is renewed. If `isolar_report.py` refreshes tokens, it prints the **new** values at the end of the run. **Copy them into `config.py`** so the next run (e.g. on another device) does not rely on an expired access token. Alternatively, keep one canonical `config.py` per device.
+- When **`isolar_report.py`** obtains new tokens from the refresh endpoint, it **rewrites `tokens.json`** and prints a short confirmation. **Copy `tokens.json` to other devices** if you run the report in more than one place; app credentials in **`config.py`** must still match on each device.
 
 ---
 
@@ -68,7 +71,7 @@ The script **`get_access_token.py`** is **tracked in git** and contains **no sec
 1. Copy `config.example.py` → `config.py` if you have not already.
 2. In `config.py`, set real values for **`ISOLAR_SERVER`**, **`APP_KEY`**, **`SECRET_KEY`**, **`APP_ID`**, and **`REDIRECT_URI`**.  
    `REDIRECT_URI` must match the redirect URL registered in the [developer portal](https://developer-api.isolarcloud.com/).  
-   You can leave **`ACCESS_TOKEN` / `REFRESH_TOKEN` / `TOKEN_EXPIRES_AT`** as placeholders until the script prints new lines to paste in.
+   You can leave **`ACCESS_TOKEN` / `REFRESH_TOKEN` / `TOKEN_EXPIRES_AT`** as placeholders; after OAuth, tokens are stored in **`tokens.json`**.
 
 **Run (desktop, after `./setup.sh`)**
 
@@ -88,7 +91,7 @@ Use `./run_get_token_termux.sh --url-only` to print only the authorization URL.
 
 **Without the shell wrappers** (same behavior): `source venv/bin/activate` then `python3 get_access_token.py`, or on Termux `python3 get_access_token.py` from the project directory after `pip install -r requirements.txt`.
 
-The script prints step-by-step what to do: open the authorization URL, sign in, approve access, then paste the **full redirect URL** or the **`code`** query value. If your redirect target is a site like Google that **hides** `?code=` in the address bar, the script explains using **Developer Tools → Network (Preserve log)** to copy the first URL that still contains `code=`. It prints **`ACCESS_TOKEN`**, **`REFRESH_TOKEN`**, and **`TOKEN_EXPIRES_AT`** assignments to copy into `config.py`.
+The script prints step-by-step what to do: open the authorization URL, sign in, approve access, then paste the **full redirect URL** or the **`code`** query value. If your redirect target is a site like Google that **hides** `?code=` in the address bar, the script explains using **Developer Tools → Network (Preserve log)** to copy the first URL that still contains `code=`. It then **saves tokens to `tokens.json`** (gitignored).
 
 ---
 
@@ -98,7 +101,7 @@ The script prints step-by-step what to do: open the authorization URL, sign in, 
 |------|--------|
 | `ISOLAR_SERVER` | Gateway region: `Europe`, `International`, `Australia`, or `China` |
 | `APP_KEY`, `SECRET_KEY`, `APP_ID` | From the [iSolarCloud developer portal](https://developer-api.isolarcloud.com/) |
-| `ACCESS_TOKEN`, `REFRESH_TOKEN`, `TOKEN_EXPIRES_AT` | After OAuth: `./run_get_token.sh` / `./run_get_token_termux.sh`, or `get_access_token.py`; see `config.example.py` |
+| `ACCESS_TOKEN`, `REFRESH_TOKEN`, `TOKEN_EXPIRES_AT` | Optional if **`tokens.json`** exists; else set after OAuth. Prefer `tokens.json` (auto-updated on refresh) |
 | `PLANT_ID` | Your plant id; leave empty once to **list** plants and exit |
 | `TIMEZONE` | IANA name for day boundaries (e.g. `Europe/Madrid`) |
 | `PURCHASE_PRICE_PER_KWH`, `FEED_IN_PRICE_PER_KWH`, `CURRENCY_SYMBOL` | Money columns for purchased kWh and feed-in kWh |

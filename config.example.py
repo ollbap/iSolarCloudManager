@@ -66,6 +66,10 @@ SECRET_KEY = "YOUR_SECRET_KEY"
 APP_ID = "YOUR_APPLICATION_ID"
 REDIRECT_URI = "https://example.com/oauth/callback"
 
+# OAuth session tokens: after you run get_access_token.py, they are stored in tokens.json
+# (gitignored). isolar_report.py reads tokens.json first; these three are only used if
+# that file is missing. You can leave the placeholders below if you use tokens.json only.
+# APP_KEY, SECRET_KEY, APP_ID, and REDIRECT_URI always stay in config.py.
 ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
 REFRESH_TOKEN = "YOUR_REFRESH_TOKEN"
 # Unix timestamp when ACCESS_TOKEN expires; used to decide when to refresh.
