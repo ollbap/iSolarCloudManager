@@ -1,0 +1,1 @@
+pysolarcloud>=0.4.0,<1
