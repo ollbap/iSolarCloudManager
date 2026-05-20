@@ -358,20 +358,20 @@ async def run_report(*, now_only: bool = False) -> None:
 
         print(f"{bold}Last 7 days{reset} — energy and money from config tariffs")
         col_date = "Date"
-        col_pv = "PV kWh"
+        col_pv = "PV"
         col_ld = "Load"
-        col_fi = "FeedIn kWh"
-        col_buy = "Buy kWh"
-        col_cost = f"Cost ({currency})"
-        col_inc = f"Income ({currency})"
+        col_fi = "FeedIn"
+        col_buy = "Buy"
+        col_cost = f"Cost"
+        col_inc = f"Income"
         w_date = 10
-        w_pv = max(len(col_pv), 8)
-        w_ld = 8
-        w_fi = max(len(col_fi), 8)
-        w_buy = max(len(col_buy), 8)
-        w_cost = max(len(col_cost), 8)
-        w_inc = max(len(col_inc), 8)
-        sep = " | "
+        w_pv = max(len(col_pv), 7)
+        w_ld = max(len(col_ld), 7)
+        w_fi = max(len(col_fi), 7)
+        w_buy = max(len(col_buy), 7)
+        w_cost = max(len(col_cost), 6)
+        w_inc = max(len(col_inc), 6)
+        sep = "|"
         header = (
             f"{col_date:<{w_date}}{sep}{col_pv:>{w_pv}}{sep}{col_ld:>{w_ld}}"
             f"{sep}{col_fi:>{w_fi}}{sep}{col_buy:>{w_buy}}"
